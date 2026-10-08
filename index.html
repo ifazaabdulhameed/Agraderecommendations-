@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A-Grade Storefront | Instagram Bio Shop</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { background-color: #121212; color: #e4e4e7; font-family: system-ui, -apple-system, sans-serif; transition: background-color 0.5s ease; }
+    .glass { background: rgba(24, 24, 27, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.06); }
+    #toast { transition: transform 0.3s ease, opacity 0.3s ease; }
+    #welcomeBanner { transition: opacity 0.6s ease, max-height 0.6s ease, margin 0.6s ease, padding 0.6s ease; max-height: 200px; opacity: 1; overflow: hidden; }
+    #welcomeBanner.fade-out { opacity: 0; max-height: 0; margin-top: 0 !important; margin-bottom: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; border-width: 0 !important; }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+    .skeleton { animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+    
+    #ambientGlow {
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.18;
+      filter: blur(80px);
+      transition: background 0.6s ease;
+    }
+  </style>
+</head>
+<body class="min-h-screen pb-16 relative">
+
+  <div id="ambientGlow" style="background: radial-gradient(circle at 50% 30%, #52525b 0%, transparent 70%);"></div>
+
+  <div id="toast" class="fixed bottom-5 left-1/2 -translate-x-1/2 translate-y-16 opacity-0 z-50 bg-zinc-800 text-zinc-100 px-4 py-2.5 rounded-2xl shadow-2xl border border-zinc-700 flex items-center space-x-2 text-xs font-medium pointer-events-none">
+    <i id="toastIcon" class="fa-solid fa-circle-check text-stone-300"></i>
+    <span id="toastMsg">Action successful!</span>
+  </div>
+
+  <header class="sticky top-0 z-40 glass px-4 py-3 flex items-center justify-between shadow-sm">
+    <div class="flex items-center space-x-3 cursor-pointer select-none" id="logoGroup">
+      <div class="w-10 h-10 rounded-xl bg-stone-200 text-zinc-900 flex items-center justify-center font-bold text-xl shadow-sm">
+        A
+      </div>
+      <div>
+        <h1 class="font-bold text-lg leading-tight tracking-wide text-stone-100">A-Grade</h1>
+        <p class="text-xs text-stone-400 font-medium">Curated Deals & Bio Shop</p>
+      </div>
+    </div>
+
+    <div class="flex items-center space-x-2">
+      <div id="sync-status" class="hidden text-[10px] px-2 py-1 bg-emerald-500/10 text-emerald-300 border border-emerald-500/20 rounded font-medium">Cloud Connected</div>
+      <button id="adminHeaderBtn" onclick="openAdminModal()" class="hidden bg-zinc-800 hover:bg-zinc-700 text-stone-300 border border-zinc-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center space-x-1.5">
+        <i class="fa-solid fa-user-shield text-stone-400"></i>
+        <span>Admin</span>
+      </button>
+    </div>
+  </header>
+
+  <section class="max-w-xl mx-auto px-4 pt-6 pb-2 text-center relative z-10">
+    <h2 class="text-2xl font-bold tracking-tight text-stone-100">
+      Find Products From Instagram
+    </h2>
+    <p class="text-stone-400 text-xs mt-1">Enter Reel / Post Code or Search by Name</p>
+
+    <div id="welcomeBanner" class="mt-4 bg-zinc-900/90 border border-zinc-800 rounded-2xl p-3.5 text-center shadow-sm relative">
+      <button onclick="dismissWelcome()" class="absolute top-2 right-2.5 text-stone-400 hover:text-stone-200 text-xs" title="Dismiss">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <h3 class="text-xs font-bold text-stone-200 flex items-center justify-center space-x-1.5">
+        <i class="fa-solid fa-hands-clapping text-stone-400"></i>
+        <span>Welcome to A-Grade</span>
+      </h3>
+      <p class="text-[11px] text-stone-400 mt-1">
+        Tap any product to view full details, select colors, and click Buy Now!
+      </p>
+    </div>
+
+    <div class="mt-4 flex gap-2">
+      <div class="relative flex-1">
+        <input type="text" id="searchInput" oninput="handleSearch()" placeholder="Enter Code (e.g. #A101) or Name..."
+               class="w-full bg-zinc-900 border border-zinc-800 rounded-2xl py-3 pl-10 pr-10 text-sm text-stone-100 placeholder-stone-500 focus:outline-none focus:border-stone-600 shadow-sm">
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3.5 text-stone-500 text-sm"></i>
+        <button id="clearSearchBtn" onclick="clearSearch()" class="hidden absolute right-3.5 top-3.5 text-stone-500 hover:text-stone-300">
+          <i class="fa-solid fa-circle-xmark"></i>
+        </button>
+      </div>
+      <select id="sortSelect" onchange="handleSort()" class="bg-zinc-900 border border-zinc-800 rounded-2xl px-3 text-xs text-stone-300 focus:outline-none focus:border-stone-600">
+        <option value="newest">Newest</option>
+        <option value="oldest">Oldest</option>
+      </select>
+    </div>
+
+    <div class="flex items-center justify-center gap-2 mt-3 overflow-x-auto py-1 no-scrollbar text-xs">
+      <button onclick="setPlatform('all')" class="platform-btn px-3 py-1.5 rounded-full bg-zinc-900 text-stone-300 border border-zinc-800 hover:border-stone-600 font-medium">All Platforms</button>
+      <button onclick="setPlatform('Amazon')" class="platform-btn px-3 py-1.5 rounded-full bg-zinc-900 text-stone-300 border border-zinc-800 hover:border-stone-600 font-medium">Amazon</button>
+      <button onclick="setPlatform('Flipkart')" class="platform-btn px-3 py-1.5 rounded-full bg-zinc-900 text-stone-300 border border-zinc-800 hover:border-stone-600 font-medium">Flipkart</button>
+      <button onclick="setPlatform('Meesho')" class="platform-btn px-3 py-1.5 rounded-full bg-zinc-900 text-stone-300 border border-zinc-800 hover:border-stone-600 font-medium">Meesho</button>
+    </div>
+
+    <div class="flex items-center justify-center gap-1.5 mt-2 overflow-x-auto py-1 no-scrollbar text-[11px]">
+      <button onclick="setCategory('all')" class="category-btn text-stone-900 bg-stone-200 border border-stone-300 px-2.5 py-1 rounded-md font-medium">All Categories</button>
+      <button onclick="setCategory('Gadgets')" class="category-btn text-stone-400 bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-md font-medium">⚡ Gadgets</button>
+      <button onclick="setCategory('Fashion')" class="category-btn text-stone-400 bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-md font-medium">👕 Fashion</button>
+      <button onclick="setCategory('Home')" class="category-btn text-stone-400 bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-md font-medium">🏠 Home</button>
+      <button onclick="setCategory('Beauty')" class="category-btn text-stone-400 bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-md font-medium">✨ Beauty</button>
+    </div>
+
+    <p id="dealCounter" class="text-[11px] text-stone-500 mt-2 font-medium">Loading curated deals...</p>
+  </section>
+
+  <main class="max-w-xl mx-auto px-4 mt-3 relative z-10">
+    <div id="productGrid" class="grid grid-cols-2 gap-3">
+      <div class="bg-zinc-900/40 rounded-xl h-56 skeleton"></div>
+      <div class="bg-zinc-900/40 rounded-xl h-56 skeleton"></div>
+    </div>
+    <div id="noResults" class="hidden text-center py-12">
+      <i class="fa-solid fa-box-open text-4xl text-stone-600 mb-2"></i>
+      <p class="text-stone-400 text-sm">No products matching your search.</p>
+    </div>
+  </main>
+
+  <!-- PRODUCT DETAIL PAGE MODAL -->
+  <div id="productDetailModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-3 sm:p-4">
+    <div class="bg-zinc-900/95 border border-zinc-800 w-full max-w-lg rounded-3xl overflow-hidden relative max-h-[92vh] flex flex-col shadow-2xl backdrop-blur-xl">
+      
+      <div class="absolute top-3 right-3 z-20">
+        <button onclick="closeProductModal()" class="w-8 h-8 rounded-full bg-black/60 hover:bg-black text-stone-200 flex items-center justify-center text-sm transition">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="overflow-y-auto flex-1 p-4 sm:p-5 space-y-4">
+        <div class="relative rounded-2xl overflow-hidden bg-zinc-950 aspect-square group">
+          <img id="modalMainImg" src="" class="w-full h-full object-cover transition duration-300" alt="Product Detail">
+          
+          <button id="modalPrevBtn" onclick="modalChangeSlide(-1)" class="absolute left-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black text-white w-8 h-8 rounded-full flex items-center justify-center text-sm transition">
+            <i class="fa-solid fa-chevron-left"></i>
+          </button>
+          <button id="modalNextBtn" onclick="modalChangeSlide(1)" class="absolute right-2 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black text-white w-8 h-8 rounded-full flex items-center justify-center text-sm transition">
+            <i class="fa-solid fa-chevron-right"></i>
+          </button>
+
+          <div id="modalImgBadge" class="absolute bottom-3 right-3 bg-black/75 text-white text-xs px-2 py-1 rounded-md font-medium">
+            1/1
+          </div>
+          <span id="modalPlatformBadge" class="absolute top-3 left-3 bg-zinc-950/80 text-stone-200 text-xs px-2.5 py-1 rounded-lg border border-zinc-800 font-semibold">
+            Amazon
+          </span>
+        </div>
+
+        <div id="modalThumbnails" class="flex gap-2 overflow-x-auto no-scrollbar py-1"></div>
+
+        <div class="space-y-1.5">
+          <div class="flex items-center justify-between">
+            <span id="modalCodeBadge" onclick="copyCode(this.innerText)" class="bg-zinc-800 hover:bg-zinc-700 text-stone-200 text-xs font-bold px-2.5 py-1 rounded-lg cursor-pointer transition border border-zinc-700 flex items-center space-x-1.5">
+              <span id="modalCodeText">#A101</span>
+              <i class="fa-regular fa-copy text-[10px]"></i>
+            </span>
+            <span id="modalCategoryBadge" class="text-xs text-stone-400 font-medium">⚡ Gadgets</span>
+          </div>
+          <h2 id="modalTitle" class="text-lg sm:text-xl font-bold text-stone-100 leading-snug">Product Title Here</h2>
+        </div>
+
+        <div id="modalColorSection" class="hidden space-y-1.5 bg-zinc-950/60 p-3 rounded-xl border border-zinc-800/85">
+          <div class="flex items-center justify-between">
+            <span class="text-xs text-stone-400 font-medium">Select Color Option:</span>
+            <span id="modalSelectedColorLabel" class="text-xs text-stone-200 font-bold"></span>
+          </div>
+          <div id="modalColorList" class="flex items-center gap-2 overflow-x-auto no-scrollbar py-1"></div>
+        </div>
+
+        <div class="pt-1">
+          <a id="modalBuyBtn" href="#" target="_blank" class="w-full bg-stone-200 hover:bg-stone-300 text-zinc-900 font-bold py-3.5 rounded-2xl text-sm transition flex items-center justify-center space-x-2 shadow-lg">
+            <span>Buy Now</span>
+            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+          </a>
+        </div>
+
+        <div class="pt-4 border-t border-zinc-800 space-y-3">
+          <h3 class="text-xs font-bold uppercase tracking-wider text-stone-400">Similar Products You Might Like</h3>
+          <div id="similarProductsGrid" class="grid grid-cols-2 gap-2.5"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN MODAL -->
+  <div id="adminModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-zinc-900 border border-zinc-800 w-full max-w-md rounded-2xl p-5 relative max-h-[90vh] overflow-y-auto">
+      <button onclick="closeAdminModal()" class="absolute top-4 right-4 text-stone-400 hover:text-stone-200">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+
+      <div id="adminLoginForm">
+        <h3 class="text-lg font-bold text-stone-200 mb-1">Admin Access Lock</h3>
+        <p class="text-xs text-stone-400 mb-4">Authorized device detected. Enter passcode to manage storefront.</p>
+        <input type="password" id="adminPassInput" placeholder="Enter Admin Passcode" class="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-3 py-2.5 text-sm mb-3 text-stone-100 focus:outline-none focus:border-stone-600">
+        <button onclick="verifyPasscode()" class="w-full bg-stone-200 hover:bg-stone-300 text-zinc-900 font-semibold py-2.5 rounded-xl text-sm transition">
+          Unlock Admin Panel
+        </button>
+      </div>
+
+      <div id="adminDashboard" class="hidden space-y-4">
+        <div class="border-b border-zinc-800 pb-3 flex justify-between items-center">
+          <h3 class="font-bold text-stone-200">Manage Cloud Storefront</h3>
+          <button onclick="logoutAdmin()" class="text-xs text-stone-400 hover:text-stone-200 underline">Lock Session</button>
+        </div>
+
+        <div class="bg-zinc-950 p-3 rounded-xl border border-zinc-800 space-y-2">
+          <div class="flex justify-between items-center">
+            <h4 id="formHeading" class="text-xs font-bold text-stone-300">Add Product to Cloud</h4>
+            <button id="cancelEditBtn" onclick="resetProductForm()" class="hidden text-[10px] text-stone-400 underline">Cancel Edit</button>
+          </div>
+          <input type="hidden" id="editProdId" value="">
+          
+          <input type="text" id="prodTitle" placeholder="Product Title" class="w-full bg-zinc-900 border border-zinc-800 text-xs p-2 rounded text-stone-100">
+          
+          <!-- Auto Code Info Box -->
+          <div class="flex items-center justify-between bg-zinc-900 border border-zinc-800 px-3 py-2 rounded text-xs text-stone-300">
+            <span class="text-[11px] text-stone-400">Product Code (Auto):</span>
+            <span id="autoGeneratedCodePreview" class="font-bold text-stone-100">#A101</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <select id="prodPlatform" class="bg-zinc-900 border border-zinc-800 text-xs p-2 rounded text-stone-100">
+              <option value="Amazon">Amazon</option>
+              <option value="Flipkart">Flipkart</option>
+              <option value="Meesho">Meesho</option>
+              <option value="Myntra">Myntra</option>
+            </select>
+            <select id="prodCategory" class="bg-zinc-900 border border-zinc-800 text-xs p-2 rounded text-stone-100">
+              <option value="Gadgets">⚡ Gadgets</option>
+              <option value="Fashion">👕 Fashion</option>
+              <option value="Home">🏠 Home</option>
+              <option value="Beauty">✨ Beauty</option>
+            </select>
+          </div>
+
+          <input type="url" id="prodUrl" placeholder="Affiliate Buy Link" class="w-full bg-zinc-900 border border-zinc-800 text-xs p-2 rounded text-stone-100">
+          <textarea id="prodImages" rows="3" placeholder="Image URLs (Paste one URL per line)" class="w-full bg-zinc-900 border border-zinc-800 text-xs p-2 rounded text-stone-100 placeholder-stone-600 focus:outline-none focus:border-stone-600"></textarea>
+          <input type="text" id="prodColors" placeholder="Colors (e.g. #000000, Black, Tan)" class="w-full bg-zinc-900 border border-zinc-800 text-xs p-2 rounded text-stone-100 placeholder-stone-600 focus:outline-none focus:border-stone-600">
+
+          <button id="saveProdBtn" onclick="saveProduct()" class="w-full bg-stone-200 hover:bg-stone-300 text-zinc-900 font-semibold py-2 rounded text-xs">
+            Save to Cloud
+          </button>
+        </div>
+
+        <div class="bg-zinc-950 p-3 rounded-xl border border-zinc-800 space-y-2">
+          <h4 class="text-xs font-bold text-stone-300">📋 Existing Cloud Products</h4>
+          <div id="adminProductList" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+        </div>
+
+        <div class="bg-zinc-950 p-3 rounded-xl border border-zinc-800 space-y-2">
+          <h4 class="text-xs font-bold text-stone-300">🔑 Security & Passcode Settings</h4>
+          <input type="password" id="currPass" placeholder="Current Password" class="w-full bg-zinc-900 border border-zinc-800 text-xs p-2 rounded text-stone-100">
+          <input type="password" id="newPass" placeholder="New Password" class="w-full bg-zinc-900 border border-zinc-800 text-xs p-2 rounded text-stone-100">
+          <button onclick="changePassword()" class="w-full bg-zinc-800 hover:bg-zinc-700 text-stone-200 font-semibold py-2 rounded text-xs">
+            Save New Passcode
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAXuWN-3GjerQUZaeYZO6HwMfe6jJsN4U",
+      authDomain: "agraderecommendations.firebaseapp.com",
+      projectId: "agraderecommendations",
+      storageBucket: "agraderecommendations.firebasestorage.app",
+      messagingSenderId: "42448092668",
+      appId: "1:42448092668:web:0ee9969c0511c2dd2e0679",
+      measurementId: "G-835ERGM278"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+
+    let state = {
+      products: [],
+      filterPlatform: 'all',
+      filterCategory: 'all',
+      searchQuery: '',
+      sortOrder: 'newest',
+      isAuthorizedDevice: false,
+      isAuthenticated: false,
+      activeImageIndices: {},
+      selectedColors: {},
+      activeModalProduct: null,
+      modalImageIndex: 0,
+      modalSelectedColor: null
+    };
+
+    // --- Automatic Chronological Code Generator ---
+    function generateNextCode() {
+      // Find highest code among existing products matching pattern (e.g. #A101, #A102...)
+      let maxNum = 100; // starting base number
+      state.products.forEach(p => {
+        if (p.code) {
+          const digits = p.code.replace(/\D/g, ''); // Extract only numbers
+          if (digits) {
+            const num = parseInt(digits, 10);
+            if (num > maxNum) {
+              maxNum = num;
+            }
+          }
+        }
+      });
+      const nextNum = maxNum + 1;
+      return `#A${nextNum}`; // Generates codes like #A101, #A102, #A103 within 4-5 chars
+    }
+
+    function updateAutoCodePreview() {
+      const editId = document.getElementById('editProdId').value;
+      const previewEl = document.getElementById('autoGeneratedCodePreview');
+      if (!previewEl) return;
+      
+      if (editId) {
+        const p = state.products.find(item => item.id === editId);
+        previewEl.innerText = p ? (p.code || '#A101') : '#A101';
+      } else {
+        previewEl.innerText = generateNextCode();
+      }
+    }
+
+    window.updateAmbientBackground = function(imgUrl) {
+      if (!imgUrl) return;
+      const img = new Image();
+      img.crossOrigin = "Anonymous";
+      img.src = imgUrl;
+      img.onload = function() {
+        try {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = 50; canvas.height = 50;
+          ctx.drawImage(img, 0, 0, 50, 50);
+          const p = ctx.getImageData(10, 10, 30, 30).data;
+          let r = 0, g = 0, b = 0, count = 0;
+          for (let i = 0; i < p.length; i += 4) {
+            if (p[i] + p[i+1] + p[i+2] > 40 && p[i] + p[i+1] + p[i+2] < 700) {
+              r += p[i]; g += p[i+1]; b += p[i+2]; count++;
+            }
+          }
+          if (count > 0) { r = Math.floor(r / count); g = Math.floor(g / count); b = Math.floor(b / count); }
+          else { r = 80; g = 80; b = 90; }
+          const glow = document.getElementById('ambientGlow');
+          if (glow) glow.style.background = `radial-gradient(circle at 50% 25%, rgb(${r}, ${g}, ${b}) 0%, transparent 75%)`;
+        } catch (e) {
+          const glow = document.getElementById('ambientGlow');
+          if (glow) glow.style.background = `radial-gradient(circle at 50% 25%, #475569 0%, transparent 75%)`;
+        }
+      };
+    };
+
+    window.dismissWelcome = function() {
+      const banner = document.getElementById('welcomeBanner');
+      if (banner) banner.classList.add('fade-out');
+    };
+
+    window.showToast = function(message, isError = false) {
+      const toast = document.getElementById('toast');
+      const msg = document.getElementById('toastMsg');
+      const icon = document.getElementById('toastIcon');
+      msg.innerText = message;
+      icon.className = isError ? "fa-solid fa-circle-exclamation text-stone-400" : "fa-solid fa-circle-check text-stone-300";
+      toast.classList.remove('translate-y-16', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+      setTimeout(() => {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-16', 'opacity-0');
+      }, 2500);
+    };
+
+    window.copyCode = function(code) {
+      navigator.clipboard.writeText(code).then(() => {
+        showToast(`Copied ${code} to clipboard!`);
+      }).catch(() => {
+        showToast("Failed to copy code", true);
+      });
+    };
+
+    window.shareProduct = function(title, url, code, event) {
+      if (event) event.stopPropagation();
+      if (navigator.share) {
+        navigator.share({ title: title, text: `Check out this deal from Instagram (${code}): ${title}`, url: url }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(url).then(() => { showToast("Deal link copied to clipboard!"); });
+      }
+    };
+
+    let tapCount = 0;
+    let tapTimer = null;
+    document.getElementById('logoGroup').addEventListener('click', () => {
+      tapCount++;
+      clearTimeout(tapTimer);
+      if (tapCount >= 5) {
+        localStorage.setItem('agrade_is_admin_device', 'true');
+        state.isAuthorizedDevice = true;
+        checkAdminStatus();
+        openAdminModal();
+        showToast('Device Authorized as Admin!');
+        tapCount = 0;
+      } else {
+        tapTimer = setTimeout(() => { tapCount = 0; }, 1500);
+      }
+    });
+
+    window.openProductModal = function(productId) {
+      const p = state.products.find(item => item.id === productId);
+      if (!p) return;
+      state.activeModalProduct = p;
+      state.modalImageIndex = 0;
+      let colors = p.colors ? (Array.isArray(p.colors) ? p.colors : p.colors.split(',').map(c => c.trim()).filter(Boolean)) : [];
+      state.modalSelectedColor = state.selectedColors[p.id] || (colors.length > 0 ? colors[0] : null);
+      updateModalView();
+      document.getElementById('productDetailModal').classList.remove('hidden');
+    };
+
+    window.closeProductModal = function() {
+      document.getElementById('productDetailModal').classList.add('hidden');
+      state.activeModalProduct = null;
+      const glow = document.getElementById('ambientGlow');
+      if (glow) glow.style.background = 'radial-gradient(circle at 50% 30%, #52525b 0%, transparent 70%)';
+    };
+
+    window.modalChangeSlide = function(direction) {
+      if (!state.activeModalProduct) return;
+      let images = getProductImageList(state.activeModalProduct);
+      state.modalImageIndex += direction;
+      if (state.modalImageIndex < 0) state.modalImageIndex = images.length - 1;
+      else if (state.modalImageIndex >= images.length) state.modalImageIndex = 0;
+      updateModalView();
+    };
+
+    window.setModalImage = function(index) {
+      state.modalImageIndex = index;
+      updateModalView();
+    };
+
+    window.setModalColor = function(color) {
+      state.modalSelectedColor = color;
+      if (state.activeModalProduct) {
+        state.selectedColors[state.activeModalProduct.id] = color;
+        renderProducts();
+      }
+      updateModalView();
+    };
+
+    function getProductImageList(p) {
+      if (p.images && Array.isArray(p.images) && p.images.length > 0) return p.images;
+      if (p.img) return [p.img];
+      return ['https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=400&q=80'];
+    }
+
+    function updateModalView() {
+      const p = state.activeModalProduct;
+      if (!p) return;
+      let images = getProductImageList(p);
+      let currentIndex = state.modalImageIndex % images.length;
+      let activeImgUrl = images[currentIndex];
+
+      document.getElementById('modalMainImg').src = activeImgUrl;
+      document.getElementById('modalImgBadge').innerText = `${currentIndex + 1}/${images.length}`;
+      document.getElementById('modalPlatformBadge').innerText = p.platform || 'Amazon';
+      document.getElementById('modalCodeText').innerText = p.code || '#A101';
+      document.getElementById('modalCategoryBadge').innerText = p.category ? `⚡ ${p.category}` : '⚡ Gadgets';
+      document.getElementById('modalTitle').innerText = p.title || '';
+      document.getElementById('modalBuyBtn').href = p.url || '#';
+      updateAmbientBackground(activeImgUrl);
+
+      const prevBtn = document.getElementById('modalPrevBtn');
+      const nextBtn = document.getElementById('modalNextBtn');
+      if (images.length > 1) { prevBtn.classList.remove('hidden'); nextBtn.classList.remove('hidden'); }
+      else { prevBtn.classList.add('hidden'); nextBtn.classList.add('hidden'); }
+
+      const thumbContainer = document.getElementById('modalThumbnails');
+      thumbContainer.innerHTML = '';
+      if (images.length > 1) {
+        thumbContainer.classList.remove('hidden');
+        images.forEach((imgUrl, idx) => {
+          const t = document.createElement('button');
+          t.className = `w-12 h-12 rounded-lg overflow-hidden border shrink-0 transition ${idx === currentIndex ? 'border-stone-200 ring-2 ring-stone-400' : 'border-zinc-800 opacity-60 hover:opacity-100'}`;
+          t.innerHTML = `<img src="${escapeHtml(imgUrl)}" class="w-full h-full object-cover">`;
+          t.onclick = () => setModalImage(idx);
+          thumbContainer.appendChild(t);
+        });
+      } else { thumbContainer.classList.add('hidden'); }
+
+      let colors = p.colors ? (Array.isArray(p.colors) ? p.colors : p.colors.split(',').map(c => c.trim()).filter(Boolean)) : [];
+      const colorSec = document.getElementById('modalColorSection');
+      const colorList = document.getElementById('modalColorList');
+      const selectedColorLabel = document.getElementById('modalSelectedColorLabel');
+      
+      if (colors.length > 0) {
+        colorSec.classList.remove('hidden');
+        selectedColorLabel.innerText = state.modalSelectedColor || colors[0];
+        colorList.innerHTML = '';
+        colors.forEach(c => {
+          const isHex = c.startsWith('#') || c.startsWith('rgb');
+          const isSelected = state.modalSelectedColor === c;
+          const btn = document.createElement('button');
+          btn.className = `px-3 py-1.5 rounded-xl border text-xs flex items-center space-x-1.5 transition ${isSelected ? 'border-stone-200 bg-zinc-800 text-stone-100 font-semibold' : 'border-zinc-800 bg-zinc-900 text-stone-400 hover:text-stone-200'}`;
+          btn.innerHTML = `${isHex ? `<span class="w-3.5 h-3.5 rounded-full border border-zinc-700" style="background-color: ${c};"></span>` : ''}<span>${escapeHtml(c)}</span>`;
+          btn.onclick = () => setModalColor(c);
+          colorList.appendChild(btn);
+        });
+      } else { colorSec.classList.add('hidden'); }
+
+      const similarGrid = document.getElementById('similarProductsGrid');
+      similarGrid.innerHTML = '';
+      const similarItems = state.products.filter(item => item.id !== p.id && (item.category === p.category || item.platform === p.platform)).slice(0, 4);
+      if (similarItems.length === 0) {
+        similarGrid.innerHTML = '<p class="text-xs text-stone-500 col-span-2 text-center py-2">No similar products found.</p>';
+        return;
+      }
+      similarItems.forEach(sim => {
+        let simImgs = getProductImageList(sim);
+        const simCard = document.createElement('div');
+        simCard.className = 'bg-zinc-950 border border-zinc-800/80 rounded-xl overflow-hidden cursor-pointer hover:border-stone-600 transition flex flex-col justify-between';
+        simCard.onclick = () => openProductModal(sim.id);
+        simCard.onmouseenter = () => updateAmbientBackground(simImgs[0]);
+        simCard.innerHTML = `<div><img src="${escapeHtml(simImgs[0])}" class="w-full h-28 object-cover"><div class="p-2"><span class="text-[10px] text-stone-400">${escapeHtml(sim.platform)}</span><h4 class="text-xs font-medium text-stone-200 line-clamp-1">${escapeHtml(sim.title)}</h4></div></div><div class="p-2 pt-0"><span class="w-full text-center block bg-zinc-800 hover:bg-zinc-700 text-stone-200 text-[10px] font-semibold py-1 rounded transition">Buy Now</span></div>`;
+        similarGrid.appendChild(simCard);
+      });
+    }
+
+    window.changeSlide = function(productId, direction, totalImages, event) {
+      event.stopPropagation();
+      if (!state.activeImageIndices[productId]) state.activeImageIndices[productId] = 0;
+      state.activeImageIndices[productId] += direction;
+      if (state.activeImageIndices[productId] < 0) state.activeImageIndices[productId] = totalImages - 1;
+      else if (state.activeImageIndices[productId] >= totalImages) state.activeImageIndices[productId] = 0;
+      renderProducts();
+    };
+
+    window.selectColorVariant = function(productId, colorName, event) {
+      event.stopPropagation();
+      state.selectedColors[productId] = colorName;
+      renderProducts();
+      showToast(`Selected color: ${colorName}`);
+    };
+
+    window.renderProducts = function() {
+      const grid = document.getElementById('productGrid');
+      const noRes = document.getElementById('noResults');
+      const counter = document.getElementById('dealCounter');
+      grid.innerHTML = '';
+
+      let items = state.products.filter(p => {
+        const matchesPlatform = state.filterPlatform === 'all' || p.platform === state.filterPlatform;
+        const matchesCategory = state.filterCategory === 'all' || p.category === state.filterCategory;
+        const q = state.searchQuery.toLowerCase();
+        const matchesSearch = p.title.toLowerCase().includes(q) || (p.code && p.code.toLowerCase().includes(q));
+        return matchesPlatform && matchesCategory && matchesSearch;
+      });
+
+      items.sort((a, b) => {
+        const timeA = a.createdAt?.seconds || 0;
+        const timeB = b.createdAt?.seconds || 0;
+        return state.sortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+      });
+
+      counter.innerText = `Showing ${items.length} curated ${items.length === 1 ? 'deal' : 'deals'}`;
+
+      if (items.length === 0) {
+        noRes.classList.remove('hidden');
+        renderAdminProductList();
+        updateAutoCodePreview();
+        return;
+      }
+      noRes.classList.add('hidden');
+
+      items.forEach(p => {
+        let images = getProductImageList(p);
+        if (state.activeImageIndices[p.id] === undefined) state.activeImageIndices[p.id] = 0;
+        let currentIndex = state.activeImageIndices[p.id] % images.length;
+        let colors = p.colors ? (Array.isArray(p.colors) ? p.colors : p.colors.split(',').map(c => c.trim()).filter(Boolean)) : [];
+        if (!state.selectedColors[p.id] && colors.length > 0) state.selectedColors[p.id] = colors[0];
+
+        const card = document.createElement('div');
+        card.className = 'bg-zinc-900/90 rounded-xl overflow-hidden border border-zinc-800/80 flex flex-col justify-between shadow-sm cursor-pointer hover:border-stone-600 transition';
+        card.onclick = () => openProductModal(p.id);
+        card.onmouseenter = () => updateAmbientBackground(images[currentIndex]);
+
+        card.innerHTML = `
+          <div>
+            <div class="relative group">
+              <img src="${escapeHtml(images[currentIndex])}" onerror="this.src='https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=400&q=80'" class="w-full h-36 object-cover transition duration-300" alt="${escapeHtml(p.title)}">
+              ${images.length > 1 ? `
+                <button onclick="changeSlide('${p.id}', -1,${images.length}, event)" class="absolute left-1 top-1/2 -translate-y-1/2 bg-black/60 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs opacity-75 group-hover:opacity-100 transition"><i class="fa-solid fa-chevron-left text-[10px]"></i></button>
+                <button onclick="changeSlide('${p.id}', 1,${images.length}, event)" class="absolute right-1 top-1/2 -translate-y-1/2 bg-black/60 text-white w-6 h-6 rounded-full flex items-center justify-center text-xs opacity-75 group-hover:opacity-100 transition"><i class="fa-solid fa-chevron-right text-[10px]"></i></button>
+                <div class="absolute bottom-1 right-1 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded font-medium">${currentIndex + 1}/${images.length}</div>
+              ` : ''}
+              <button onclick="event.stopPropagation(); copyCode('${escapeHtml(p.code)}')" title="Tap to copy code" class="absolute top-2 left-2 bg-zinc-800/90 hover:bg-zinc-700 text-stone-200 text-[10px] font-bold px-2 py-0.5 rounded-md shadow transition flex items-center space-x-1 border border-zinc-700">
+                <span>${escapeHtml(p.code || '#A101')}</span>
+                <i class="fa-regular fa-copy text-[9px]"></i>
+              </button>
+              <span class="absolute top-2 right-2 bg-zinc-950/80 text-stone-300 text-[10px] px-1.5 py-0.5 rounded border border-zinc-800">${escapeHtml(p.platform)}</span>
+            </div>
+            <div class="p-2.5">
+              <h3 class="text-xs font-medium text-stone-200 line-clamp-2">${escapeHtml(p.title)}</h3>
+              ${colors.length > 0 ? `
+                <div class="mt-2 flex items-center space-x-1.5 overflow-x-auto no-scrollbar py-0.5" onclick="event.stopPropagation()">
+                  <span class="text-[10px] text-stone-400 font-medium shrink-0">Color:</span>
+                  ${colors.map(c => {
+                    const isHex = c.startsWith('#') || c.startsWith('rgb');
+                    const isSelected = state.selectedColors[p.id] === c;
+                    return `<button onclick="selectColorVariant('${p.id}', '${escapeHtml(c)}', event)" class="px-2 py-0.5 rounded text-[10px] border transition shrink-0 ${isSelected ? 'border-stone-200 bg-zinc-800 text-stone-100 font-bold ring-1 ring-stone-400' : 'border-zinc-800 bg-zinc-950 text-stone-400 hover:text-stone-200'}">${isHex ? `<span class="inline-block w-2 h-2 rounded-full mr-1" style="background-color: ${c};"></span>` : ''}<span>${escapeHtml(c)}</span></button>`;
+                  }).join('')}
+                </div>
+              ` : ''}
+            </div>
+          </div>
+          <div class="p-2.5 pt-0 space-y-1.5">
+            <div class="grid grid-cols-3 gap-1.5">
+              <a href="${escapeHtml(p.url)}" target="_blank" onclick="event.stopPropagation()" class="col-span-2 text-center bg-stone-200 hover:bg-stone-300 text-zinc-900 text-xs font-semibold py-1.5 rounded-lg transition flex items-center justify-center space-x-1 shadow-sm"><span>Buy Now</span><i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i></a>
+              <button onclick="shareProduct('${escapeHtml(p.title).replace(/'/g, "\\'")}', '${escapeHtml(p.url)}', '${escapeHtml(p.code)}', event)" title="Share Deal" class="bg-zinc-800 hover:bg-zinc-700 text-stone-300 text-xs py-1.5 rounded-lg transition flex items-center justify-center border border-zinc-700"><i class="fa-solid fa-share-nodes text-[11px]"></i></button>
+            </div>
+            ${state.isAuthenticated ? `
+              <div class="grid grid-cols-2 gap-1" onclick="event.stopPropagation()">
+                <button onclick="startEditProduct('${p.id}')" class="bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 text-[10px] py-1 rounded transition border border-amber-500/20">Edit</button>
+                <button onclick="deleteProductFromCloud('${p.id}')" class="bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 text-[10px] py-1 rounded transition border border-rose-500/20">Delete</button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+
+      renderAdminProductList();
+      updateAutoCodePreview();
+    };
+
+    function renderAdminProductList() {
+      const listContainer = document.getElementById('adminProductList');
+      if (!listContainer) return;
+      listContainer.innerHTML = '';
+      if (state.products.length === 0) {
+        listContainer.innerHTML = '<p class="text-[11px] text-stone-500 text-center py-2">No products in cloud.</p>';
+        return;
+      }
+      state.products.forEach(p => {
+        const item = document.createElement('div');
+        item.className = 'bg-zinc-900 border border-zinc-800 p-2 rounded-lg flex items-center justify-between text-xs';
+        item.innerHTML = `<div class="truncate mr-2"><span class="text-stone-300 font-bold mr-1">${escapeHtml(p.code || '#A101')}</span><span class="text-stone-400">${escapeHtml(p.title)}</span></div><div class="flex items-center space-x-1 shrink-0"><button onclick="startEditProduct('${p.id}')" class="bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 px-2 py-1 rounded text-[10px]">Edit</button><button onclick="deleteProductFromCloud('${p.id}')" class="bg-rose-500/10 text-rose-300 hover:bg-rose-500/20 px-2 py-1 rounded text-[10px]">Del</button></div>`;
+        listContainer.appendChild(item);
+      });
+    }
+
+    window.handleSearch = function() {
+      state.searchQuery = document.getElementById('searchInput').value;
+      document.getElementById('clearSearchBtn').classList.toggle('hidden', state.searchQuery === '');
+      renderProducts();
+    };
+
+    window.clearSearch = function() {
+      document.getElementById('searchInput').value = '';
+      state.searchQuery = '';
+      document.getElementById('clearSearchBtn').classList.add('hidden');
+      renderProducts();
+    };
+
+    window.handleSort = function() {
+      state.sortOrder = document.getElementById('sortSelect').value;
+      renderProducts();
+    };
+
+    window.setPlatform = function(platform) {
+      state.filterPlatform = platform;
+      renderProducts();
+    };
+
+    window.setCategory = function(category) {
+      state.filterCategory = category;
+      document.querySelectorAll('.category-btn').forEach(btn => {
+        btn.className = "category-btn text-stone-400 bg-zinc-900 border border-zinc-800 px-2.5 py-1 rounded-md font-medium";
+      });
+      event.target.className = "category-btn text-stone-900 bg-stone-200 border border-stone-300 px-2.5 py-1 rounded-md font-medium";
+      renderProducts();
+    };
+
+    function checkAdminStatus() {
+      state.isAuthorizedDevice = localStorage.getItem('agrade_is_admin_device') === 'true';
+      const btn = document.getElementById('adminHeaderBtn');
+      if (state.isAuthorizedDevice) btn.classList.remove('hidden');
+    }
+
+    window.openAdminModal = function() {
+      document.getElementById('adminModal').classList.remove('hidden');
+      updateAutoCodePreview();
+    };
+
+    window.closeAdminModal = function() {
+      document.getElementById('adminModal').classList.add('hidden');
+    };
+
+    window.verifyPasscode = function() {
+      const input = document.getElementById('adminPassInput').value;
+      const storedPass = localStorage.getItem('agrade_passcode') || 'AGRADE2026';
+      if (input === storedPass) {
+        state.isAuthenticated = true;
+        document.getElementById('adminLoginForm').classList.add('hidden');
+        document.getElementById('adminDashboard').classList.remove('hidden');
+        document.getElementById('sync-status').classList.remove('hidden');
+        renderProducts();
+        showToast('Admin Panel Unlocked!');
+      } else {
+        showToast('Incorrect Password!', true);
+      }
+    };
+
+    window.changePassword = function() {
+      const curr = document.getElementById('currPass').value;
+      const next = document.getElementById('newPass').value;
+      const storedPass = localStorage.getItem('agrade_passcode') || 'AGRADE2026';
+      if (curr !== storedPass) { showToast('Current password incorrect!', true); return; }
+      if (!next) { showToast('Enter a valid new password', true); return; }
+      localStorage.setItem('agrade_passcode', next);
+      showToast('Password updated successfully!');
+      document.getElementById('currPass').value = '';
+      document.getElementById('newPass').value = '';
+    };
+
+    window.startEditProduct = function(id) {
+      const p = state.products.find(item => item.id === id);
+      if (!p) return;
+      document.getElementById('editProdId').value = p.id;
+      document.getElementById('prodTitle').value = p.title || '';
+      document.getElementById('prodPlatform').value = p.platform || 'Amazon';
+      document.getElementById('prodCategory').value = p.category || 'Gadgets';
+      document.getElementById('prodUrl').value = p.url || '';
+      
+      let imagesText = p.images && Array.isArray(p.images) ? p.images.join('\n') : (p.img || '');
+      document.getElementById('prodImages').value = imagesText;
+      let colorsText = p.colors ? (Array.isArray(p.colors) ? p.colors.join(', ') : p.colors) : '';
+      document.getElementById('prodColors').value = colorsText;
+
+      document.getElementById('formHeading').innerText = `Edit Product (${p.code || '#A101'})`;
+      document.getElementById('cancelEditBtn').classList.remove('hidden');
+      document.getElementById('saveProdBtn').innerText = 'Update Product';
+      updateAutoCodePreview();
+      document.querySelector('#adminDashboard').scrollTop = 0;
+    };
+
+    window.resetProductForm = function() {
+      document.getElementById('editProdId').value = '';
+      document.getElementById('prodTitle').value = '';
+      document.getElementById('prodPlatform').value = 'Amazon';
+      document.getElementById('prodCategory').value = 'Gadgets';
+      document.getElementById('prodUrl').value = '';
+      document.getElementById('prodImages').value = '';
+      document.getElementById('prodColors').value = '';
+      document.getElementById('formHeading').innerText = 'Add Product to Cloud';
+      document.getElementById('cancelEditBtn').classList.add('hidden');
+      document.getElementById('saveProdBtn').innerText = 'Save to Cloud';
+      updateAutoCodePreview();
+    };
+
+    window.saveProduct = async function() {
+      const editId = document.getElementById('editProdId').value;
+      const title = document.getElementById('prodTitle').value;
+      const platform = document.getElementById('prodPlatform').value;
+      const category = document.getElementById('prodCategory').value;
+      const url = document.getElementById('prodUrl').value;
+      
+      let images = document.getElementById('prodImages').value.split('\n').map(s => s.trim()).filter(Boolean);
+      if (images.length === 0) images = ['https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?auto=format&fit=crop&w=400&q=80'];
+
+      let colors = document.getElementById('prodColors').value ? document.getElementById('prodColors').value.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+      if (!title || !url) {
+        showToast('Please fill out Product Title & Link.', true);
+        return;
+      }
+
+      try {
+        if (editId) {
+          const p = state.products.find(item => item.id === editId);
+          await updateDoc(doc(db, "products", editId), {
+            title,
+            code: p ? p.code : generateNextCode(), // Keep original code on edit
+            platform,
+            category,
+            url,
+            images,
+            colors
+          });
+          showToast('Product updated successfully!');
+          resetProductForm();
+        } else {
+          // Automatically compute and assign the next chronological code
+          const newCode = generateNextCode();
+          await addDoc(collection(db, "products"), {
+            title,
+            code: newCode,
+            platform,
+            category,
+            url,
+            images,
+            colors,
+            createdAt: new Date()
+          });
+          document.getElementById('prodTitle').value = '';
+          document.getElementById('prodUrl').value = '';
+          document.getElementById('prodImages').value = '';
+          document.getElementById('prodColors').value = '';
+          showToast(`Product added with code ${newCode}!`);
+          resetProductForm();
+        }
+      } catch (error) {
+        console.error("Error saving product: ", error);
+        showToast("Operation failed.", true);
+      }
+    };
+
+    window.deleteProductFromCloud = async function(id) {
+      if (confirm('Delete this product permanently from the cloud?')) {
+        try {
+          await deleteDoc(doc(db, "products", id));
+          if (document.getElementById('editProdId').value === id) resetProductForm();
+          showToast('Product deleted.');
+        } catch (error) {
+          console.error("Error deleting product: ", error);
+          showToast("Failed to delete product.", true);
+        }
+      }
+    };
+
+    window.logoutAdmin = function() {
+      state.isAuthenticated = false;
+      document.getElementById('adminLoginForm').classList.remove('hidden');
+      document.getElementById('adminDashboard').classList.add('hidden');
+      document.getElementById('sync-status').classList.add('hidden');
+      closeAdminModal();
+      resetProductForm();
+      renderProducts();
+      showToast('Admin session locked.');
+    };
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return text.toString().replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    const q = query(collection(db, "products"), orderBy("createdAt", "desc"));
+    onSnapshot(q, (snapshot) => {
+      state.products = [];
+      snapshot.forEach((docSnap) => {
+        state.products.push({ id: docSnap.id, ...docSnap.data() });
+      });
+      renderProducts();
+    });
+
+    window.onload = function() {
+      checkAdminStatus();
+      renderProducts();
+      setTimeout(() => { dismissWelcome(); }, 5000);
+    };
+  </script>
+</body>
+</html>
+
